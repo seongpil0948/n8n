@@ -1,0 +1,62 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+volumes/
+*.log
+
+# SSL certificates
+nginx/ssl/
+*.pem
+*.key
+*.crt
+
+# n8n data
+n8n/workflows/*
+!n8n/workflows/.gitkeep
+n8n/nodes/*
+!n8n/nodes/.gitkeep
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
