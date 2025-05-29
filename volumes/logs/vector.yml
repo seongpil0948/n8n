@@ -196,7 +196,7 @@ sinks:
     request:
       retry_max_duration_secs: 10
     # nginx를 통해 라우팅하도록 변경
-    uri: 'http://nginx/analytics/v1/api/logs?source_name=postgres.logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+    uri: 'http://nginx:80/analytics/v1/api/logs?source_name=postgres.logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
   logflare_functions:
     type: 'http'
     inputs:
