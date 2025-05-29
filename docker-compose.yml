@@ -48,34 +48,73 @@ services:
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
       # Uncomment to use Big Query backend for analytics
       # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
+    networks:
+      - n8n-supabase      
 
-  kong:
-    container_name: supabase-kong
-    image: kong:2.8.1
+  nginx:
+    container_name: nginx-proxy
+    image: nginx:alpine
     restart: unless-stopped
     ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
+      - "80:80"
+      - "443:443"
+      - "5678:5678"  # n8n
     volumes:
-      # https://github.com/supabase/supabase/issues/12661
-      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
-      analytics:
-        condition: service_healthy
+      - n8n
+      - studio
+      - auth
+      - rest
+      - realtime
+      - storage
+      - functions
+    networks:
+      - n8n-supabase
+
+  n8n:
+    container_name: n8n
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    user: root
     environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
-      # https://github.com/supabase/cli/issues/14
-      KONG_DNS_ORDER: LAST,A,CNAME
-      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
-      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
-      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
-    # https://unix.stackexchange.com/a/294837
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+      - N8N_HOST=n8n.shop.co.kr
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.shop.co.kr/
+      - N8N_EDITOR_BASE_URL=https://n8n.shop.co.kr/
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n_user
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRESDB_SCHEMA=n8n
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./volumes/n8n:/home/node/.n8n
+      - ./volumes/n8n/custom:/home/node/.n8n/custom
+    depends_on:
+      - db
+      - redis
+    networks:
+      - n8n-supabase
+
+  redis:
+    container_name: n8n-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/redis:/data
+    networks:
+      - n8n-supabase
+
 
   auth:
     container_name: supabase-auth
@@ -159,6 +198,8 @@ services:
       # GOTRUE_HOOK_SEND_EMAIL_ENABLED: "false"
       # GOTRUE_HOOK_SEND_EMAIL_URI: "http://host.docker.internal:54321/functions/v1/email_sender"
       # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
+    networks:
+      - n8n-supabase            
 
   rest:
     container_name: supabase-rest
@@ -182,6 +223,8 @@ services:
       [
         "postgrest"
       ]
+    networks:
+      - n8n-supabase            
 
   realtime:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
@@ -227,6 +270,8 @@ services:
       APP_NAME: realtime
       SEED_SELF_HOST: true
       RUN_JANITOR: true
+    networks:
+      - n8n-supabase            
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
@@ -271,6 +316,8 @@ services:
       GLOBAL_S3_BUCKET: stub
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
+    networks:
+      - n8n-supabase            
 
   imgproxy:
     container_name: supabase-imgproxy
@@ -293,6 +340,8 @@ services:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
       IMGPROXY_USE_ETAG: "true"
       IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION}
+    networks:
+      - n8n-supabase            
 
   meta:
     container_name: supabase-meta
@@ -311,6 +360,8 @@ services:
       PG_META_DB_NAME: ${POSTGRES_DB}
       PG_META_DB_USER: supabase_admin
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - n8n-supabase            
 
   functions:
     container_name: supabase-edge-functions
@@ -335,6 +386,8 @@ services:
         "--main-service",
         "/home/deno/functions/main"
       ]
+    networks:
+      - n8n-supabase            
 
   analytics:
     container_name: supabase-analytics
@@ -382,6 +435,8 @@ services:
       # Uncomment to use Big Query backend for analytics
       # GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
       # GOOGLE_PROJECT_NUMBER: ${GOOGLE_PROJECT_NUMBER}
+    networks:
+      - n8n-supabase            
 
   # Comment out everything below this point if you are using an external Postgres database
   db:
@@ -406,6 +461,9 @@ services:
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
+
+      - ./volumes/db/init-n8n.sql:/docker-entrypoint-initdb.d/init-scripts/95-n8n.sql:Z
+      - ./volumes/db/init-vector.sql:/docker-entrypoint-initdb.d/init-scripts/96-vector.sql:Z      
     healthcheck:
       test:
         [
@@ -440,6 +498,8 @@ services:
         "-c",
         "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
       ]
+    networks:
+      - n8n-supabase      
 
   vector:
     container_name: supabase-vector
@@ -470,6 +530,8 @@ services:
       ]
     security_opt:
       - "label=disable"
+    networks:
+      - n8n-supabase            
 
   # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
@@ -523,6 +585,12 @@ services:
         "-c",
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
+    networks:
+      - n8n-supabase            
 
 volumes:
   db-config:
+
+networks:
+  n8n-supabase:
+    driver: bridge

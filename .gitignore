@@ -60,3 +60,12 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# n8n specific
+volumes/n8n/.n8n
+volumes/n8n/config
+volumes/n8n/crash.journal
+volumes/n8n/logs/
+volumes/n8n/packages/
+volumes/n8n/.cache/
+dump.rdb
