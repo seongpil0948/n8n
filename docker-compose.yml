@@ -11,7 +11,7 @@ services:
 
   studio:
     container_name: supabase-studio
-    image: supabase/studio:2025.05.19-sha-3487831
+    image: supabase/studio:2025.05.26-sha-bd7334d
     restart: unless-stopped
     healthcheck:
       test:
@@ -35,7 +35,8 @@ services:
       DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
-      SUPABASE_URL: http://nginx:80
+      # nginx를 통한 내부 통신으로 변경
+      SUPABASE_URL: http://nginx
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
@@ -44,12 +45,9 @@ services:
       LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
       LOGFLARE_URL: http://analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: true
-      # Comment to use Big Query backend for analytics
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
-      # Uncomment to use Big Query backend for analytics
-      # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
     networks:
-      - n8n-supabase      
+      - n8n-supabase  
 
   nginx:
     container_name: nginx-proxy
@@ -80,9 +78,9 @@ services:
     restart: unless-stopped
     user: root
     environment:
-      - N8N_HOST=n8n.shop.co.kr
+      - N8N_HOST=0.0.0.0  # 모든 인터페이스에서 수신
       - N8N_PORT=5678
-      - N8N_PROTOCOL=https
+      - N8N_PROTOCOL=http 
       - WEBHOOK_URL=https://n8n.shop.co.kr/
       - N8N_EDITOR_BASE_URL=https://n8n.shop.co.kr/
       - DB_TYPE=postgresdb
@@ -97,6 +95,8 @@ services:
       - QUEUE_BULL_REDIS_PORT=6379
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - NODE_ENV=production
+      - N8N_BASIC_AUTH_ACTIVE=false  # 기본 인증 비활성화
+      - N8N_AUTH_EXCLUDE_ENDPOINTS=rest,healthz,metrics  # 인증 제외 엔드포인트      
     volumes:
       - ./volumes/n8n:/home/node/.n8n
       - ./volumes/n8n/custom:/home/node/.n8n/custom

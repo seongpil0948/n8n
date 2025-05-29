@@ -195,10 +195,8 @@ sinks:
     method: 'post'
     request:
       retry_max_duration_secs: 10
-    # We must route the sink through kong because ingesting logs before logflare is fully initialised will
-    # lead to broken queries from studio. This works by the assumption that containers are started in the
-    # following order: vector > db > logflare > kong
-    uri: 'http://kong:8000/analytics/v1/api/logs?source_name=postgres.logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+    # nginx를 통해 라우팅하도록 변경
+    uri: 'http://nginx/analytics/v1/api/logs?source_name=postgres.logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
   logflare_functions:
     type: 'http'
     inputs:
