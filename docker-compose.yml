@@ -77,8 +77,6 @@ services:
     image: docker.n8n.io/n8nio/n8n:latest
     restart: unless-stopped
     user: root
-    extra_hosts:
-      - "supabase.shop.co.kr:"
     environment:
       - N8N_HOST=0.0.0.0  # 모든 인터페이스에서 수신
       - N8N_PORT=5678
@@ -92,9 +90,7 @@ services:
       - DB_POSTGRESDB_USER=n8n_user
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - DB_POSTGRESDB_SCHEMA=n8n
-      - EXECUTIONS_MODE=queue
-      - QUEUE_BULL_REDIS_HOST=redis
-      - QUEUE_BULL_REDIS_PORT=6379
+      - EXECUTIONS_MODE=regular
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - NODE_ENV=production
       - N8N_BASIC_AUTH_ACTIVE=false  # 기본 인증 비활성화
@@ -104,19 +100,8 @@ services:
       - ./volumes/n8n/custom:/home/node/.n8n/custom
     depends_on:
       - db
-      - redis
     networks:
       - n8n-supabase
-
-  redis:
-    container_name: n8n-redis
-    image: redis:7-alpine
-    restart: unless-stopped
-    volumes:
-      - ./volumes/redis:/data
-    networks:
-      - n8n-supabase
-
   auth:
     container_name: supabase-auth
     image: supabase/gotrue:v2.172.1
