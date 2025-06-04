@@ -30,18 +30,19 @@ transforms:
     inputs:
       - project_logs
     route:
-      kong: '.appname == "supabase-kong"'
+      # nginx로 변경
+      nginx: '.appname == "nginx-proxy"'
       auth: '.appname == "supabase-auth"'
       rest: '.appname == "supabase-rest"'
       realtime: '.appname == "supabase-realtime"'
       storage: '.appname == "supabase-storage"'
       functions: '.appname == "supabase-functions"'
       db: '.appname == "supabase-db"'
-  # Ignores non nginx errors since they are related with kong booting up
-  kong_logs:
+  # nginx 로그 처리
+  nginx_logs:
     type: remap
     inputs:
-      - router.kong
+      - router.nginx
     source: |-
       req, err = parse_nginx_log(.event_message, "combined")
       if err == null {
@@ -57,11 +58,11 @@ transforms:
       if err != null {
         abort
       }
-  # Ignores non nginx errors since they are related with kong booting up
-  kong_err:
+  # nginx 에러 로그 처리
+  nginx_err:
     type: remap
     inputs:
-      - router.kong
+      - router.nginx
     source: |-
       .metadata.request.method = "GET"
       .metadata.response.status_code = 200
@@ -217,11 +218,11 @@ sinks:
     request:
       retry_max_duration_secs: 10
     uri: 'http://analytics:4000/api/logs?source_name=storage.logs.prod.2&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
-  logflare_kong:
+  logflare_nginx:
     type: 'http'
     inputs:
-      - kong_logs
-      - kong_err
+      - nginx_logs
+      - nginx_err
     encoding:
       codec: 'json'
     method: 'post'
